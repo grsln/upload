@@ -1,0 +1,16 @@
+{% extends 'sub_base.html' %}
+
+{% block content_with_back %}
+<h1>Новое изображение</h1>
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+<form action="{% url 'upload:add_image' %}" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <p>Ссылка</p>
+    <input name="image_url" id="image_url">
+    <br>
+    <input type="file" name="image_original" accept="image/*" id="id_image_original">
+    <br>
+    <button type="submit">Отправить</button>
+</form>
+
+{% endblock content_with_back %}

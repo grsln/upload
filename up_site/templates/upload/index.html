@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Список изображений</h1>
+{% if object_list %}
+{% for image in object_list %}
+<p>
+<a href="{% url 'upload:image' image.id %}">{{ image.filename }}</a>
+</p>
+{% endfor %}
+{% else %}
+<h2>Нет доступных изображений</h2>
+{% endif %}
+<a href="{% url 'upload:add_image' %}">Добавить изображение</a>
+{% endblock content %}

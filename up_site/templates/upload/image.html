@@ -1,0 +1,20 @@
+{% extends 'sub_base.html' %}
+
+{% block content_with_back %}
+<h1>{{ object.filename }}</h1>
+<form method="post">
+    {% csrf_token %}
+    <br>
+    <label for="image_width">Ширина</label>
+    <br>
+    <input name="image_width" id="image_width" value="{{ width }}">
+    <br>
+    <label for="image_height">Высота</label>
+    <br>
+    <input name="image_height" id="image_height" value="{{ height }}">
+    <br> <br>
+    <button type="submit">Отправить</button>
+</form>
+<br>
+<img src="{{ image_url }}">
+{% endblock content_with_back %}

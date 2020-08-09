@@ -1,0 +1,4 @@
+/.env.dev
+/venv/
+/up_site/db.sqlite3
+/up_site/media/
