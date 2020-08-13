@@ -1,0 +1,231 @@
+- hosts: all
+  gather_facts: false
+  become: true
+  environment:
+    LANG: "en_US.UTF-8"
+    LC_ALL: "en_US.UTF-8"
+  vars:
+    ansible_python_interpreter: "/usr/bin/env python3"
+    domain_name: "{{ ansible_host }}"
+    user_name: "rusl"
+    project_name: "upload"
+    project_path: "/home/{{ user_name }}"
+    ssh_key_path: "/home/ruslan/.ssh/id_rsa.pub"
+    django_admin_user: "admin"
+    django_admin_email: "email@example.com"
+    django_admin_pass: "admin"
+    nginx_conf: |
+      server {
+      listen 80;
+      server_name {{ domain_name }};
+      access_log /var/log/{{ project_name }}_access.log;
+      error_log /var/log/{{ project_name }}_error.log;
+      location = /favicon.ico { access_log off; log_not_found off; }
+      location /static/ {
+      root {{ project_path }}/{{ project_name }}/up_site;
+      }
+      location /media/ {
+      root {{ project_path }}/{{ project_name }}/up_site;
+      }
+      location / {
+      include proxy_params;
+      proxy_pass http://unix:/run/gunicorn.sock;
+      }
+      }      
+    gunicorn_service: |
+      [Unit]
+      Description=Gunicorn instance to serve {{ project_name }}
+      Requires=gunicorn-{{project_name}}.socket
+      After=network.target
+      [Service]
+      User={{ user_name }}
+      Group=www-data
+      WorkingDirectory={{ project_path }}/{{ project_name }}/up_site
+      Environment="PATH={{ project_path }}/{{ project_name }}/venv/bin"
+      ExecStart={{ project_path }}/{{ project_name }}/venv/bin/gunicorn --workers 3 --bind unix:/run/gunicorn.sock up_site.wsgi:application
+      [Install]
+      WantedBy=multi-user.target      
+    gunicorn_socket: |
+      [Unit]
+      Description=gunicorn socket
+      [Socket]
+      ListenStream=/run/gunicorn.sock
+      [Install]
+      WantedBy=sockets.target
+    env_conf: |
+      DEBUG=0
+      SECRET_KEY=any_secret_key
+      DJANGO_ALLOWED_HOSTS={{domain_name}}
+  handlers:
+    - name: restart gunicorn
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: gunicorn-{{ project_name }}
+    - name: restart nginx
+      service: name=nginx state=restarted
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Make sure we have a 'wheel' group
+      group:
+        name: wheel
+        state: present
+
+    - name: Allow 'wheel' group to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^%wheel'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+
+    - name: Add sudoers users to wheel group
+      user:
+        name: "{{ user_name }}"
+        groups: wheel, www-data
+        shell: /bin/bash
+        append: yes
+        state: present
+        create_home: yes
+
+    - name: Set up authorized keys for the {{ user_name }} user
+      authorized_key: user={{ user_name }} key="{{item}}"
+      with_file:
+        - "{{ssh_key_path}}"
+
+
+
+    - name: Install system wide dependencies
+      apt:
+        state: present
+        cache_valid_time: 10800
+        update_cache: yes
+        pkg:
+          - nginx
+          - python3-setuptools
+          - python3-pip
+          - python3
+          - python3-venv
+          - git
+
+    - name: git clone
+      git:
+        repo: 'https://github.com/grsln/upload.git'
+        dest: "{{ project_path }}/{{ project_name }}"
+        clone: yes
+      become_user: "{{ user_name }}"
+
+    - name: Create a virtual environment in the book app repo
+      shell: python3 -m venv {{ project_path }}/{{ project_name }}/venv
+      become_user: "{{ user_name }}"
+
+
+    - pip:
+        requirements: "{{ project_path }}/{{ project_name }}/requirements.txt"
+        virtualenv: "{{ project_path }}/{{ project_name }}/venv"
+        virtualenv_python: python3
+      become_user: "{{ user_name }}"
+
+
+    - name: Create .env file
+      copy:
+        content: |
+          {{ env_conf }}
+        dest: "{{ project_path }}/{{ project_name }}/.env"
+        mode: 0444
+      become_user: "{{ user_name }}"
+
+    - name: Activate venv
+      shell: sh activate
+      args:
+        chdir: "{{ project_path }}/{{ project_name }}/venv/bin/"
+      become_user: "{{ user_name }}"
+
+    - name: Django - run migration
+      django_manage:
+        app_path: "{{ project_path }}/{{ project_name }}/up_site/"
+        command: migrate
+        virtualenv: "{{ project_path }}/{{ project_name }}/venv"
+      become_user: "{{ user_name }}"
+
+    - name: Create staticfiles dir
+      file:
+        state: directory
+        path: "{{ project_path }}/{{ project_name }}/up_site/staticfiles/"
+        mode: 0755
+      become_user: "{{ user_name }}"
+
+    - name: Django - collect static files
+      django_manage:
+        app_path: "{{ project_path }}/{{ project_name }}/up_site/"
+        command: collectstatic
+        virtualenv: "{{ project_path }}/{{ project_name }}/venv"
+      become_user: "{{ user_name }}"
+
+    - name: Django - create super user
+      django_manage:
+        command: shell -c "from django.contrib.auth.hashers import make_password; from django.contrib.auth import get_user_model; MyUser = get_user_model(); MyUser.objects.filter( username__exact = '{{ django_admin_user }}' ).count() == 0 or exit(); new_super_user = MyUser( username = '{{ django_admin_user }}', email='{{ django_admin_email }}', is_superuser = True, is_staff = True ); new_super_user.password = make_password('{{ django_admin_pass }}'); new_super_user.save();"
+        app_path: "{{ project_path }}/{{ project_name }}/up_site"
+        virtualenv: "{{ project_path }}/{{ project_name }}/venv"
+
+    - name: Create media dir
+      file:
+        state: directory
+        path: "{{ project_path }}/{{ project_name }}/up_site/media/"
+        mode: 0775
+      become: yes
+      become_user: "{{ user_name }}"
+
+    - name: Set no response in the default nginx config
+      copy:
+        content: |
+          server {
+            listen 80 default_server;
+            return 444;
+          }
+        dest: /etc/nginx/sites-available/default
+      notify:
+        - restart nginx
+
+    - name: Create website nginx config
+      copy:
+        content: "{{ nginx_conf }}"
+        dest: "/etc/nginx/sites-available/{{ project_name }}.conf"
+        mode: 0666
+      notify:
+        - restart nginx
+
+    - name: Enable site nginx config
+      file:
+        state: link
+        src: "/etc/nginx/sites-available/{{ project_name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ project_name }}.conf"
+        force: yes
+      notify:
+        - restart nginx
+
+    - pip:
+        name: gunicorn
+        virtualenv: "{{ project_path }}/{{ project_name }}/venv"
+      become: yes
+      become_user: "{{ user_name }}"
+
+    - name: Setup gunicorn service
+      copy:
+        content: "{{ gunicorn_service }}"
+        dest: "/etc/systemd/system/gunicorn-{{ project_name }}.service"
+        mode: 0666
+      notify:
+        - restart gunicorn
+
+    - name: Setup gunicorn socket
+      copy:
+        content: "{{ gunicorn_socket }}"
+        dest: "/etc/systemd/system/gunicorn-{{ project_name }}.socket"
+        mode: 0666
+      notify:
+        - restart gunicorn
