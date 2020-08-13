@@ -2,6 +2,7 @@
 Тестовое задание Upload
 ### [Установка Django-приложения с помощью Ansible](#ansible)
 ### [Установка Django-приложения на сервер UBUNTU](#terminal)
+### [Установка Django-приложения с помощью Docker](#docker)
 ### <a name="ansible">Установка Django-приложения с помощью Ansible</a>
 Открываем терминал на клиенте.
 Вводим следующие команды:
@@ -223,4 +224,73 @@ server {
 
 + _sudo systemctl restart nginx_
 
+### <a name="docker">Установка Django-приложения с помощью Docker</a>
 
+Открываем терминал на клиенте.
+
+Вводим следующие команды:
+
++ _cd ~/.ssh_
+
++ _ssh-keygen -t rsa_
+
+> на все запросы нажимаем клавишу Enter
+
++ _cat id_rsa.pub_ - выводим на экран публичный ключ, копируем в буфер Ctrl-C
+
+Регистрируемся на сайте Vscale.io и создаем *Docker*-сервер. При создании сервера выбираем **Добавить ключ ssh**. В окне создания ключа вводим произвольное название и вставляем из буфера раннее скопированный ключ. Далее выбираем добавленный ключ и нажимаем **Создать сервер**.
+
+В окне терминала клиента вводим:
+
++ _ssh root@xxx.xxx.xxx.xxx_ (где xxx.xxx.xxx.xxx— IP созданного сервера).
+
+Скачиваем образы из Docker Hub.
+
++ _docker pull grsln/upload_web:latest_
+
++ _docker pull grsln/upload_nginx:latest_
+
+Создаем docker-compose.yaml и вводим конфигурации
+
++ _nano docker-compose.yml_
+
+```
+version: '3.7'
+
+services:
+  web:
+    image: grsln/upload_web:latest
+    restart: always
+    command: gunicorn up_site.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/home/up_site/web/static
+      - media_volume:/home/up_site/web/media
+    expose:
+      - 8000
+    env_file:
+      - ./.env
+  nginx:
+    image: grsln/upload_nginx:latest
+    restart: always
+    volumes:
+      - static_volume:/home/up_site/web/static
+      - media_volume:/home/up_site/web/media
+    ports:
+      - 80:80
+    depends_on:
+      - web
+volumes:
+  static_volume:
+  media_volume:
+```
+
+Создаем файл .env,  вводим IP-адрес docker-сервера и secret key 
++ _nano .env_
+
+```
+DEBUG=0
+SECRET_KEY=<secret key >
+DJANGO_ALLOWED_HOSTS=<ip>
+```
+Выполняем сборку и запуск контейнеров
++ _docker-compose  up -d --build_
