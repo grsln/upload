@@ -53,7 +53,16 @@ inventory=hosts
 
 + _wget 'https://raw.githubusercontent.com/grsln/upload/master/site.yml'_.
 
-Перед запуском ansible в файле site.yml необходимо поменять параметры по умолчанию(пароль админки django, SECRET_KEY)
+Перед запуском ansible в файле site.yml необходимо поменять параметры по умолчанию(путь до ssh-ключа на клиенте, сведения админки django, SECRET_KEY)
+
+```
+ssh_key_path: "/home/ruslan/.ssh/id_rsa.pub"
+django_admin_user: "admin"
+django_admin_email: "email@example.com"
+django_admin_pass: "admin"
+...
+SECRET_KEY=any_secret_key
+```
 
 В терминале запускаем
 
