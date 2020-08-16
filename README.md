@@ -284,13 +284,13 @@ volumes:
   media_volume:
 ```
 
-Создаем файл .env,  вводим IP-адрес docker-сервера и secret key 
+Создаем файл .env,  вводим домен (или IP-адрес) docker-сервера и secret key 
 + _nano .env_
 
 ```
 DEBUG=0
 SECRET_KEY=<secret key >
-DJANGO_ALLOWED_HOSTS=<ip>
+DJANGO_ALLOWED_HOSTS=<domain or ip>
 ```
 Выполняем сборку и запуск контейнеров
 + _docker-compose  up -d --build_
