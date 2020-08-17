@@ -2,3 +2,5 @@
 /venv/
 /up_site/db.sqlite3
 /up_site/media/
+/up_site/htmlcov/
+/up_site/.coverage

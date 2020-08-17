@@ -1,4 +1,4 @@
 [servers]
-test ansible_host=79.143.31.199 ansible_user=root
+test ansible_host=82.148.31.189 ansible_user=root
 [servers:vars]
 ansible_python_interpreter=/usr/bin/python3

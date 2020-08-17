@@ -5,17 +5,18 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.generic import ListView, DetailView
 from easy_thumbnails.files import get_thumbnailer
-
-from .forms import ImageForm
+from .forms import ImageForm, ResizeImageForm
 from .models import Image
 
 
+# начальная страница
 class IndexView(ListView):
     model = Image
     template_name = 'upload/index.html'
     fields = ['filename']
 
 
+# страница добавления изображения
 def add_image(request):
     form = ImageForm()
     if request.method == 'POST':
@@ -33,11 +34,11 @@ def add_image(request):
                         validate = URLValidator()
                         try:
                             validate(file_url)
-                        except ValidationError as e:
+                        except ValidationError:
                             return render(request, 'upload/add_image.html',
                                           {'error_message': 'Ошибка: неправильная ссылка.'})
                         image = Image()
-                        image.filename = file_url.split('/')[-1]
+                        # image.filename = file_url.split('/')[-1]
                         if not image.get_remote_image(file_url):
                             return render(request, 'upload/add_image.html',
                                           {'error_message': 'Ошибка открытия ссылки.'})
@@ -48,34 +49,24 @@ def add_image(request):
     return render(request, 'upload/add_image.html', {'form': form})
 
 
+# страница изменения размеров изображения
 class ImageView(DetailView):
     model = Image
     template_name = 'upload/image.html'
 
     def post(self, request, *args, **kwargs):
-        if request.POST.get('image_width') and request.POST.get('image_height'):
+        width_from_request = request.POST.get('image_width')
+        height_from_request = request.POST.get('image_height')
+        if width_from_request and height_from_request:
             self.object = self.get_object()
             context = self.get_context_data(object=self.object)
-            width = int(request.POST['image_width'])
-            height = int(request.POST['image_height'])
-            ratio = float(self.object.img_width / self.object.img_height)
-            if (width == self.object.last_width) or (height == self.object.last_height):
-                if (height == self.object.last_height) and (self.object.last_width != width):
-                    height = int(width / ratio)
-                else:
-                    if (width == self.object.last_width) and (self.object.last_height != height):
-                        width = int(height * ratio)
-            else:
-                width = int(height * ratio) if height < width else width
-                height = int(width / ratio) if height > width else height
-
-            options = {'size': (width, height), 'crop': True}
+            new_size = self.object.resize_image({'width': width_from_request,
+                                                 'height': height_from_request})
+            options = {'size': (new_size['width'], new_size['height']), 'crop': True}
             thumb_url = get_thumbnailer(self.object.image_original).get_thumbnail(options).url
-            self.object.last_width = width
-            self.object.last_height = height
-            self.object.save()
-            context['width'] = width
-            context['height'] = height
+            self.object.save_last_size_image(new_size)
+            context['width'] = new_size['width']
+            context['height'] = new_size['height']
             context['image_url'] = thumb_url
             return render(request, template_name=self.template_name, context=context)
         return render(request, template_name=self.template_name)

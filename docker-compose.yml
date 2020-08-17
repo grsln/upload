@@ -1,0 +1,14 @@
+version: '3.7'
+
+services:
+  web:
+    build: ./up_site
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./up_site/:/usr/src/up_site/
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env.dev
+
+
