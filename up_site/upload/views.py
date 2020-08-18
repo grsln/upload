@@ -22,14 +22,15 @@ def add_image(request):
     if request.method == 'POST':
         form = ImageForm(request.POST, request.FILES)
         if form.is_valid():
-            if ('image_original' in request.FILES) and (request.POST.get('image_url')):
+            image_url = request.POST.get('image_url')
+            if ('image_original' in request.FILES) and (image_url):
                 return render(request, 'upload/add_image.html',
                               {'error_message': 'Ошибка: выберите файл одним способом.'})
             else:
                 if 'image_original' in request.FILES:
                     image = form.save(commit=True)
                 else:
-                    if request.POST['image_url']:
+                    if image_url:
                         file_url = request.POST['image_url']
                         validate = URLValidator()
                         try:
