@@ -6,15 +6,18 @@ services:
       context: ./up_site
       dockerfile: Dockerfile.prod
     command: gunicorn up_site.wsgi:application --bind 0.0.0.0:8000
+    restart: always
     volumes:
       - static_volume:/home/up_site/web/static
       - media_volume:/home/up_site/web/media
+      - db_volume:/home/up_site/web/db
     expose:
       - 8000
     env_file:
       - ./.env.prod
   nginx:
     build: ./nginx
+    restart: always
     volumes:
       - static_volume:/home/up_site/web/static
       - media_volume:/home/up_site/web/media
@@ -25,4 +28,5 @@ services:
 volumes:
   static_volume:
   media_volume:
+  db_volume:
 

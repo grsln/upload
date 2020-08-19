@@ -1,0 +1,8 @@
+htmlcov
+staticfiles
+db.sqlite3
+Dockerfile
+Dockerfile.prod
+entrypoint.sh
+.coverage
+ball.jpg

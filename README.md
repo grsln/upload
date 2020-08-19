@@ -274,6 +274,7 @@ services:
     volumes:
       - static_volume:/home/up_site/web/static
       - media_volume:/home/up_site/web/media
+      - db_volume:/home/up_site/web/db
     expose:
       - 8000
     env_file:
@@ -291,6 +292,7 @@ services:
 volumes:
   static_volume:
   media_volume:
+  db_volume:
 ```
 
 Создаем файл .env,  вводим домен (или IP-адрес) docker-сервера и secret key 
@@ -298,8 +300,9 @@ volumes:
 
 ```
 DEBUG=0
-SECRET_KEY=<secret key >
+SECRET_KEY=<secret key>
 DJANGO_ALLOWED_HOSTS=<domain or ip>
+DATABASE_URL=/home/up_site/web/db/db.sqlite3
 ```
-Выполняем сборку и запуск контейнеров
-+ _docker-compose  up -d --build_
+Выполняем запуск контейнеров
++ _docker-compose  up -d_

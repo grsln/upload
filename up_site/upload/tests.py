@@ -36,10 +36,8 @@ class ImageModelTests(TestCase):
         image = add_image_for_test(self.example_image_url)
         new_size = {'width': '250', 'height': '300'}
         image.save_last_size_image(new_size)
-        self.assertIs((new_size['width'] == image.last_width) and
-                      (new_size['height'] == image.last_height), True)
-        self.assertIs((new_size['width'] == image.img_width) and
-                      (new_size['height'] == image.img_height), False)
+        self.assertIs((new_size['width'] == image.last_width) and (new_size['height'] == image.last_height), True)
+        self.assertIs((new_size['width'] == image.img_width) and (new_size['height'] == image.img_height), False)
 
     def test_get_absolute_url(self):
         """
@@ -54,8 +52,7 @@ class ImageModelTests(TestCase):
         """
         image = Image(img_width=600, img_height=500)
         new_size = image.resize_image({'width': 'str', 'height': 'str'})
-        self.assertIs((new_size['width'] == image.img_width) and
-                      (new_size['height'] == image.img_height), True)
+        self.assertIs((new_size['width'] == image.img_width) and (new_size['height'] == image.img_height), True)
 
     def test_resize_image_with_negative(self):
         """
@@ -72,8 +69,7 @@ class ImageModelTests(TestCase):
         """
         image = Image(img_width=600, img_height=500)
         new_size = image.resize_image({'width': '0', 'height': '0'})
-        self.assertIs((new_size['width'] == image.img_width) and
-                      (new_size['height'] == image.img_height), True)
+        self.assertIs((new_size['width'] == image.img_width) and (new_size['height'] == image.img_height), True)
 
     def test_resize_image_only_width(self):
         """
@@ -261,6 +257,6 @@ class AddImageTests(TestCase):
         data = {
             'image_url': self.wrong_image_url,
         }
-        response = self.client.post(reverse('upload:add_image'),data=data)
+        response = self.client.post(reverse('upload:add_image'), data=data)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Ошибка открытия ссылки.')
